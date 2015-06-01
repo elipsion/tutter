@@ -1,0 +1,8 @@
+endpoints:
+    "/github":
+        script: |
+          print(my_parameter);
+          print("Foobar");
+        parameters:
+          my_parameter: 2
+
