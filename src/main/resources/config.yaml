@@ -1,8 +1,15 @@
 endpoints:
     "/github":
         script: |
-          print(my_parameter);
-          print("Foobar");
+          import se.elipsion.tutter.modules.github.*;
+          Object o = Util.gitHubEnterprise("https://ghe.spotify.net/api/v3/");
+          print(o);
+          print(owners);
         parameters:
-          my_parameter: 2
+          accessToken: "DEADBEEF42"
+          votes: 2
+          owners:
+              - elipsion
+              - olle
+              - guidou
 
