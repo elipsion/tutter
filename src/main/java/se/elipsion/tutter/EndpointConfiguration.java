@@ -3,6 +3,7 @@ package se.elipsion.tutter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.HashMap;
+import java.util.List;
 
 
 /**
@@ -10,6 +11,12 @@ import java.util.HashMap;
  */
 
 public class EndpointConfiguration {
+
+  String path;
+
+  @JsonProperty
+  List<String> methods;
+
   @JsonProperty
   String script;
 

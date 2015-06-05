@@ -12,17 +12,24 @@ import java.io.IOException;
  */
 public class Actions {
 
-  public static String sppuppet(Github github, String repository, int pullRequest)
+  public static String saneReview(Github github, String repository, int pullRequest)
       throws IOException {
     Pull pull = github.repos().get(new Coordinates.Simple(repository)).pulls().get(pullRequest);
-    if (Util.hasMergeCommand(pull))
+    return saneReview(github,pull);
+  }
+  public static String saneReview(Github github, Pull pull)
+      throws IOException {
+    if (Util.hasMergeCommand(pull)) {
       if (Util.sumVotes(pull) > 1) {
-        pull.merge("Merged by tutter, the almighty");
+        //pull.merge("Merged by tutter, the almighty");
+        return "Merged!";
       } else {
-
+        //new Pull.Smart(pull).issue().comments().post("Not enough votes to merge");
+        return "Not enough votes to merge";
       }
-
-    return "";
+    } else {
+      return "No merge command submitted; standing by";
+    }
   }
 
 

@@ -2,9 +2,11 @@ package se.elipsion.tutter.modules.github;
 
 
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
+import com.jcabi.github.Commit;
 import com.jcabi.github.Github;
 import com.jcabi.github.Pull;
 import com.jcabi.github.PullComment;
+import com.jcabi.github.Repo;
 import com.jcabi.github.RtGithub;
 import com.jcabi.http.Request;
 import com.jcabi.http.request.ApacheRequest;
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -36,22 +39,29 @@ public class Util {
       Manifests.read("JCabi-Date")
   );
 
-  public static Request gitHubEnterpriseRequest(String url) {
+  public static Request gitHubEnterpriseRequest(final String url) {
     return new ApacheRequest(url)
         .header(HttpHeaders.USER_AGENT, USER_AGENT)
         .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
   }
 
-  public static Github gitHubEnterprise(String URI) {
-    return new RtGithub(gitHubEnterpriseRequest(URI));
+  public static Github gitHubEnterprise(final String URI) {
+    return gitHubEnterprise(URI, null);
   }
 
-  public static int sumVotes(Pull pullRequest) throws IOException {
+  public static Github gitHubEnterprise(final String URI, final String accessToken) {
+    Request req = gitHubEnterpriseRequest(URI);
+    if(null != accessToken)
+      req.header(HttpHeaders.AUTHORIZATION,  String.format("token %s", accessToken));
+    return new RtGithub(req);
+  }
+
+  public static int sumVotes(final Pull pullRequest) throws IOException {
     return sumVotes(pullRequest, UP_VOTES, DOWN_VOTES);
   }
 
-  public static int sumVotes(Pull pullRequest, String[] upVotes, String[] downVotes)
+  public static int sumVotes(final Pull pullRequest, final String[] upVotes, final String[] downVotes)
       throws IOException {
     int votes = 0;
     String author = pullRequest.json().getJsonObject("user").getString("login");
@@ -82,8 +92,8 @@ public class Util {
     return votes;
   }
 
-  public static Iterable<PullComment> commentsAfter(Iterable<PullComment> commentIterator,
-                                                    String date) throws IOException {
+  public static Iterable<PullComment> commentsAfter(final Iterable<PullComment> commentIterator,
+                                                    final String date) throws IOException {
     DateFormat dateFormat = new ISO8601DateFormat();
     try {
       return commentsAfter(commentIterator, dateFormat.parse(date));
@@ -91,8 +101,8 @@ public class Util {
       throw new RuntimeException("Could not parse date field on head commit");
     }
   }
-  public static Iterable<PullComment> commentsAfter(Iterable<PullComment> commentIterator,
-                                                    Date date) throws IOException{
+  public static Iterable<PullComment> commentsAfter(final Iterable<PullComment> commentIterator,
+                                                    final Date date) throws IOException{
     DateFormat dateFormat = new ISO8601DateFormat();
     Stream<PullComment> stream = StreamSupport.stream(commentIterator.spliterator(), false);
     return stream.filter(comment -> {
@@ -107,18 +117,28 @@ public class Util {
     }).collect( Collectors.toList());
   }
 
-  public static Iterable<PullComment> validCommandComments(Pull pull) throws IOException {
-    String headSHA = pull.json().getJsonObject("head").getString("sha");
-    String headTime = pull.repo().commits().get(headSHA).json()
-        .getJsonObject("committer").getString("date");
-    return commentsAfter(pull.comments().iterate(null), headTime);
+  public static Iterable<PullComment> validCommandComments(final Pull pull) throws IOException {
+    // TODO: Ensure that this is the right timestamp
+    Pull.Smart p = new Pull.Smart(pull);
+    return commentsAfter(pull.comments().iterate(new HashMap<>()), p.updatedAt());
   }
 
-  public static boolean hasMergeCommand(Pull pull) throws IOException {
+  public static boolean hasMergeCommand(final Pull pull) throws IOException {
     for (PullComment dumbComment : validCommandComments(pull))
       for(String match : MERGE_COMMANDS)
         if(new PullComment.Smart(dumbComment).body().startsWith(match))
           return true;
     return false;
+  }
+
+  public static Pull findPullRequest(final Repo repo, String sha) throws IOException {
+    for(Pull pull : repo.pulls().iterate(new HashMap<>())) {
+      for(Commit commit : pull.commits()) {
+        if(sha == commit.sha()) {
+          return pull;
+        }
+      }
+    }
+    return null;
   }
 }
